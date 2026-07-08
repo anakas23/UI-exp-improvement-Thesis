@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8">
+<title>Alat Centar - Varijanta B</title>
+<link rel="stylesheet" href="shared/common.css">
+<style>
+  /* ============================================
+     VARIJANTA B - DVOSTUPČANI raspored: lijevo trajni
+     vertikalni sidebar s filterima, desno katalog.
+     Hero je sveden na tanku traku (manje istaknut nego
+     u A). Katalog je gušći - 4 stupca umjesto 3.
+     Filter panel je uvijek vidljiv uz katalog (za
+     razliku od A gdje je iznad kao traka).
+     ============================================ */
+  .page-grid {
+    grid-template-columns: 220px 1fr;
+    grid-template-areas:
+      "nav      nav"
+      "hero     hero"
+      "sidebar  products"
+      "footer   footer";
+  }
+  .zone-nav { grid-area: nav; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .zone-hero { grid-area: hero; padding: 20px 32px; }
+  .zone-hero h1 { font-size: 1.3rem; }
+  .zone-sidebar { grid-area: sidebar; margin: 20px; border-radius: 8px; align-self: start; }
+  .zone-products { grid-area: products; }
+  .zone-footer { grid-area: footer; }
+
+  .products-grid { grid-template-columns: repeat(4, 1fr); }
+</style>
+</head>
+<body data-page-variant="variant_b">
+
+<div class="page-grid">
+
+  <nav class="zone-nav" data-zone="nav">
+    <div class="nav-logo">Alat Centar</div>
+    <ul class="nav-menu">
+      <li><a href="#" data-action="show-categories">Početna</a></li>
+      <li><a href="#" data-action="show-all-products">Proizvodi</a></li>
+      <li><a href="#" onclick="return false;">Kontakt</a></li>
+    </ul>
+  </nav>
+
+  <section class="zone-hero" data-zone="hero">
+    <h1>Kvalitetni alati za profesionalce</h1>
+    <p>Zadatak: pronađite kutnu brusilicu koja košta <strong>89 €</strong> i dovršite kupnju.</p>
+  </section>
+
+  <aside class="zone-sidebar" data-zone="sidebar">
+    <h3>Cijena</h3>
+    <div class="filter-group">
+      <label><input type="checkbox" name="price-filter" value="under20"> Do 20 €</label>
+      <label><input type="checkbox" name="price-filter" value="mid"> 20 € - 80 €</label>
+      <label><input type="checkbox" name="price-filter" value="over80"> Preko 80 €</label>
+    </div>
+  </aside>
+
+  <main class="zone-products" data-zone="products">
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div class="products-grid" id="categoryGrid"></div>
+    <div class="products-grid" id="productGrid" hidden></div>
+  </main>
+
+  <footer class="zone-footer" data-zone="footer">
+    <div>© 2026 Alat Centar. Sva prava pridržana.</div>
+    <div>
+      <a href="#" onclick="return false;">O nama</a> &nbsp;|&nbsp;
+      <a href="#" onclick="return false;">Kontakt</a> &nbsp;|&nbsp;
+      <a href="#" onclick="return false;">Uvjeti korištenja</a>
+    </div>
+  </footer>
+
+</div>
+
+<script src="shared/click-logger.js"></script>
+<script src="shared/shop-flow.js"></script>
+</body>
+</html>
