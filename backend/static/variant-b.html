@@ -2,35 +2,36 @@
 <html lang="hr">
 <head>
 <meta charset="UTF-8">
-<title>Alat Centar - Varijanta A</title>
+<title>Alat Centar - Varijanta B</title>
 <link rel="stylesheet" href="shared/common.css">
 <style>
   /* ============================================
-     VARIJANTA A - sve zone posložene u JEDAN stupac,
-     jedna ispod druge, redoslijedom: nav, hero, filter
-     bar (horizontalan), katalog (3 stupca), footer.
-     Filter traka je horizontalna traka preko cijele
-     širine, a ne bočni sidebar.
+     VARIJANTA B - DVOSTUPČANI raspored: lijevo trajni
+     vertikalni sidebar s filterima, desno katalog.
+     Hero je sveden na tanku traku (manje istaknut nego
+     u A). Katalog je gušći - 4 stupca umjesto 3.
+     Filter panel je uvijek vidljiv uz katalog (za
+     razliku od A gdje je iznad kao traka).
      ============================================ */
   .page-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: 220px 1fr;
     grid-template-areas:
-      "nav"
-      "hero"
-      "sidebar"
-      "products"
-      "footer";
+      "nav      nav"
+      "hero     hero"
+      "sidebar  products"
+      "footer   footer";
   }
-  .zone-nav { grid-area: nav; display: flex; justify-content: space-between; align-items: center; }
-  .zone-hero { grid-area: hero; }
-  .zone-sidebar { grid-area: sidebar; margin: 20px 24px 0 24px; }
+  .zone-nav { grid-area: nav; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .zone-hero { grid-area: hero; padding: 20px 32px; }
+  .zone-hero h1 { font-size: 1.3rem; }
+  .zone-sidebar { grid-area: sidebar; margin: 20px; border-radius: 8px; align-self: start; }
   .zone-products { grid-area: products; }
   .zone-footer { grid-area: footer; }
 
-  .products-grid { grid-template-columns: repeat(3, 1fr); max-width: 1000px; margin: 0 auto; }
+  .products-grid { grid-template-columns: repeat(4, 1fr); }
 </style>
 </head>
-<body data-page-variant="variant_a">
+<body data-page-variant="variant_b">
 
 <div class="page-grid">
 
@@ -44,12 +45,12 @@
   </nav>
 
   <section class="zone-hero" data-zone="hero">
-    <h1>Kvalitetni alati za profesionalce</h1>
+    <h1>Kvalitetni alati za profesionalce i hobiste</h1>
     <p>Zadatak: pronađite kutnu brusilicu koja košta <strong>89 €</strong> i dovršite kupnju.</p>
   </section>
 
-  <aside class="zone-sidebar sidebar-horizontal" data-zone="sidebar">
-    <h3 style="margin:0;">Filteri:</h3>
+  <aside class="zone-sidebar" data-zone="sidebar">
+    <h3>Cijena</h3>
     <div class="filter-group">
       <label><input type="checkbox" name="price-filter" value="under20"> Do 20 €</label>
       <label><input type="checkbox" name="price-filter" value="mid"> 20 € - 80 €</label>
