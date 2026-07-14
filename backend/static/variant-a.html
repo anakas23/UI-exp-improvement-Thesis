@@ -2,15 +2,16 @@
 <html lang="hr">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Alat Centar - Varijanta A</title>
 <link rel="stylesheet" href="shared/common.css">
 <style>
   /* ============================================
      VARIJANTA A - sve zone posložene u JEDAN stupac,
-     jedna ispod druge, redoslijedom: nav, hero, filter
-     bar (horizontalan), katalog (3 stupca), footer.
-     Filter traka je horizontalna traka preko cijele
-     širine, a ne bočni sidebar.
+     jedna ispod druge: nav, hero, quick-nav (horizontalan),
+     katalog (3 stupca po sekciji), footer.
+     Redoslijed kategorija (vidi catalog.js): Električni
+     alati (cilj) NA VRHU stranice.
      ============================================ */
   .page-grid {
     grid-template-columns: 1fr;
@@ -27,7 +28,14 @@
   .zone-products { grid-area: products; }
   .zone-footer { grid-area: footer; }
 
-  .products-grid { grid-template-columns: repeat(3, 1fr); max-width: 1000px; margin: 0 auto; }
+  .product-grid { grid-template-columns: repeat(3, 1fr); max-width: 1000px; margin: 0 auto; }
+
+  @media (max-width: 700px) {
+    .product-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 420px) {
+    .product-grid { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body data-page-variant="variant_a">
@@ -37,8 +45,7 @@
   <nav class="zone-nav" data-zone="nav">
     <div class="nav-logo">Alat Centar</div>
     <ul class="nav-menu">
-      <li><a href="#" data-action="show-categories">Početna</a></li>
-      <li><a href="#" data-action="show-all-products">Proizvodi</a></li>
+      <li><a href="#" data-action="scroll-top">Početna</a></li>
       <li><a href="#" onclick="return false;">Kontakt</a></li>
     </ul>
   </nav>
@@ -49,18 +56,12 @@
   </section>
 
   <aside class="zone-sidebar sidebar-horizontal" data-zone="sidebar">
-    <h3 style="margin:0;">Filteri:</h3>
-    <div class="filter-group">
-      <label><input type="checkbox" name="price-filter" value="under20"> Do 20 €</label>
-      <label><input type="checkbox" name="price-filter" value="mid"> 20 € - 80 €</label>
-      <label><input type="checkbox" name="price-filter" value="over80"> Preko 80 €</label>
-    </div>
+    <h3>Kategorije:</h3>
+    <nav class="quick-nav" id="categoryQuickNav"></nav>
   </aside>
 
   <main class="zone-products" data-zone="products">
-    <div class="breadcrumb" id="breadcrumb"></div>
-    <div class="products-grid" id="categoryGrid"></div>
-    <div class="products-grid" id="productGrid" hidden></div>
+    <div id="productCatalog"></div>
   </main>
 
   <footer class="zone-footer" data-zone="footer">
@@ -75,6 +76,6 @@
 </div>
 
 <script src="shared/click-logger.js"></script>
-<script src="shared/shop-flow.js"></script>
+<script src="shared/catalog.js"></script>
 </body>
 </html>

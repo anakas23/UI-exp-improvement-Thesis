@@ -3,13 +3,21 @@
    Zajednički stilovi za sve varijante (A/B/C).
    Boje, tipografija i izgled komponenti (kartice,
    gumbi, nav stavke, modal) su IDENTIČNI na sve 3
-   stranice - mijenja se samo RASPORED ZONA (grid
-   raspored definiran unutar <style> svakog HTML filea).
+   stranice - mijenja se RASPORED ZONA (grid raspored
+   definiran u <style> svakog HTML filea) I REDOSLIJED
+   KATEGORIJA (definiran u catalog.js).
 
-   VAŽNO: traženi artikl (Krumpir Ranka) nema NIKAKAV
-   poseban CSS - koristi identičnu .product-card klasu
-   kao svi ostali artikli. Razlika je isključivo u
-   podatku data-task-target koji dodaje shop-flow.js.
+   VAŽNO: traženi artikl (Kutna brusilica 125mm, 89 €)
+   nema NIKAKAV poseban CSS - koristi identičnu
+   .product-card klasu kao svi ostali artikli.
+
+   VAŽNO ZA HEATMAPU: stranica je JEDNA statična cjelina
+   bez prebacivanja ekrana - normalan scroll, bez
+   dinamičkih promjena visine tijekom sesije. Razlika u
+   VISINI IZMEĐU varijanti je u redu i namjerna (različit
+   redoslijed kategorija) - problem koji smo rješavali
+   bio je promjena visine UNUTAR iste sesije, ne između
+   varijanti.
    ============================================ */
 
 :root {
@@ -29,10 +37,6 @@
   box-sizing: border-box;
 }
 
-/* Bez ovoga, .products-grid { display: grid } nadjačava zadani
-   [hidden] { display: none } iz browserovog UA stylesheeta (autorski
-   CSS uvijek ima prioritet nad UA stilom, bez obzira na specifičnost),
-   pa se elementi s hidden atributom ne bi stvarno sakrili. */
 [hidden] {
   display: none !important;
 }
@@ -107,82 +111,73 @@ h1, h2, h3 {
   max-width: 480px;
 }
 
-/* --- SIDEBAR / FILTERI --- */
+/* --- SIDEBAR: BRZI NAVIGATOR PO KATEGORIJAMA --- */
 .zone-sidebar {
   background: var(--color-surface);
-  padding: 20px;
+  padding: 16px 20px;
   border: 1px solid var(--color-border);
   border-radius: 8px;
 }
 
 .zone-sidebar h3 {
-  font-size: 1rem;
-  margin-bottom: 12px;
+  font-size: 0.95rem;
+  margin-bottom: 10px;
 }
 
-.filter-group {
-  margin-bottom: 16px;
+.quick-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.filter-group label {
-  display: block;
+.quick-nav a {
   font-size: 0.9rem;
-  padding: 4px 0;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.filter-group label:hover {
-  color: var(--color-text);
-}
-
-/* horizontalna varijanta filter bara (koristi variant A) */
-.zone-sidebar.sidebar-horizontal {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  border-radius: 0;
-}
-
-.zone-sidebar.sidebar-horizontal .filter-group {
-  margin-bottom: 0;
-}
-
-/* --- BREADCRUMB (navigacija kategorija) --- */
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 16px;
-  min-height: 28px;
-}
-
-.breadcrumb-back {
-  border: none;
-  background: none;
   color: var(--color-accent-dark);
-  font-size: 0.9rem;
-  cursor: pointer;
   padding: 4px 0;
 }
 
-.breadcrumb-back:hover {
+.quick-nav a:hover {
   text-decoration: underline;
 }
 
-.breadcrumb-current {
-  color: var(--color-text-muted);
-  font-size: 0.9rem;
+/* horizontalna varijanta (koristi variant A) - linkovi jedan pored drugog */
+.zone-sidebar.sidebar-horizontal {
+  display: flex;
+  align-items: center;
+  gap: 20px;
 }
 
-/* --- PRODUCTS / KATEGORIJE (dijele istu grid klasu) --- */
+.zone-sidebar.sidebar-horizontal h3 {
+  margin: 0;
+}
+
+.zone-sidebar.sidebar-horizontal .quick-nav {
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 18px;
+}
+
+/* --- PRODUCTS: obična statična stranica, normalan scroll --- */
 .zone-products {
   padding: 24px;
 }
 
-.products-grid {
+.category-section {
+  margin-bottom: 32px;
+  scroll-margin-top: 20px; /* razmak od vrha kad se skoči preko quick-nav linka */
+}
+
+.category-heading {
+  font-size: 1.2rem;
+  color: var(--color-accent-dark);
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 16px;
+}
+
+.product-grid {
   display: grid;
-  gap: 20px;
+  gap: 16px;
 }
 
 /* Svi artikli (uključujući traženi) dijele TOČNO istu karticu - bez iznimke */
@@ -194,7 +189,6 @@ h1, h2, h3 {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  cursor: pointer;
   transition: box-shadow 0.15s ease;
 }
 
@@ -202,20 +196,8 @@ h1, h2, h3 {
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
 }
 
-/* kategorija-tile koristi istu .product-card klasu, samo centrirano i bez cijene */
-.category-tile {
-  align-items: center;
-  text-align: center;
-  justify-content: center;
-  min-height: 130px;
-}
-
-.category-tile .product-image {
-  font-size: 2.4rem;
-}
-
 .product-image {
-  height: 100px;
+  height: 90px;
   border-radius: 6px;
   background: var(--color-highlight);
   display: flex;
@@ -226,7 +208,7 @@ h1, h2, h3 {
 
 .product-name {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.95rem;
 }
 
 .product-price {
@@ -277,7 +259,7 @@ h1, h2, h3 {
   color: var(--color-text);
 }
 
-/* --- MODAL (dijeli ga i poruka o dovršetku i detalj artikla) --- */
+/* --- MODAL (samo poruka o dovršetku zadatka) --- */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -301,32 +283,6 @@ h1, h2, h3 {
   color: var(--color-accent-dark);
 }
 
-.modal-close {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  border: none;
-  background: none;
-  font-size: 1rem;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.modal-close:hover {
-  color: var(--color-text);
-}
-
-.detail-image {
-  height: 130px;
-  font-size: 3rem;
-  margin-bottom: 8px;
-}
-
-.detail-buy {
-  width: 100%;
-  margin-top: 14px;
-}
-
 .completion-time {
   font-size: 1.2rem;
   font-weight: bold;
@@ -337,15 +293,7 @@ h1, h2, h3 {
   font-size: 0.85rem;
 }
 
-.no-results {
-  grid-column: 1 / -1;
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--color-text-muted);
-  font-size: 0.95rem;
-}
-
-/* --- DEV TRAKA (izvoz / reset - za testiranje prije backenda) --- */
+/* --- DEV TRAKA (izvoz / reset - vidljivo samo uz ?dev=1) --- */
 .hm-devbar {
   position: fixed;
   bottom: 12px;
@@ -374,4 +322,57 @@ h1, h2, h3 {
 .page-grid {
   display: grid;
   min-height: 100vh;
+}
+
+/* ============================================
+   MOBILNA PRILAGODBA (zajednička za sve 3 varijante)
+   ============================================ */
+@media (max-width: 700px) {
+  .zone-nav, .zone-hero, .zone-products, .zone-footer {
+    padding: 14px 16px;
+  }
+
+  .zone-hero h1 {
+    font-size: 1.4rem;
+  }
+
+  .nav-menu {
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+
+  .zone-sidebar.sidebar-horizontal {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+
+  .zone-sidebar.sidebar-horizontal .quick-nav {
+    gap: 10px;
+  }
+
+  .product-image {
+    height: 70px;
+    font-size: 1.6rem;
+  }
+
+  .modal-box {
+    max-width: 90vw;
+    padding: 24px 20px;
+  }
+
+  .zone-footer {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .hm-devbar {
+    flex-direction: column;
+    bottom: 8px;
+    right: 8px;
+  }
+
+  .hm-devbar button {
+    font-size: 0.7rem;
+  }
 }

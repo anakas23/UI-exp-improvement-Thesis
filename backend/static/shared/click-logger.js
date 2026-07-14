@@ -33,6 +33,29 @@
   const startTime = Date.now();
   let taskCompleted = false;
 
+  // --- Brojač redoslijeda pokušaja (za korekciju efekta učenja) ---
+  // Za razliku od session_id (koji je nov za svaki page load), ovaj brojač
+  // koristi localStorage (traje preko svih stranica/reloadova u istom
+  // browseru) da zabilježi je li ovo nečiji 1., 2. ili 3. testirani layout
+  // u ovoj "seansi" testiranja. Ako ista osoba testira sve 3 varijante
+  // zaredom u istom browseru, treća varijanta dobiva attempt_number=3,
+  // što kasnije omogućuje da se u analizi izdvoji SAMO attempt_number=1
+  // za poštenu A/B/C usporedbu bez efekta učenja.
+  //
+  // Ograničenje: ovo je heuristika vezana za browser, ne za osobu - ako
+  // netko testira na drugom uređaju/browseru ili obriše localStorage
+  // između varijanti, brojač kreće ispočetka. Za većinu slučajeva
+  // (ista osoba, isti laptop, sve u jednom sjedenju) dovoljno dobro radi.
+
+  function getNextAttemptNumber() {
+    const current = parseInt(localStorage.getItem('heatmap_attempt_count') || '0', 10);
+    const next = current + 1;
+    localStorage.setItem('heatmap_attempt_count', String(next));
+    return next;
+  }
+
+  const attemptNumber = getNextAttemptNumber();
+
   // --- Slanje na backend ---
   // `keepalive: true` osigurava da fetch pokušaj dovrši i kad se poziva
   // iz 'beforeunload' handlera (korisnik zatvara/napušta stranicu).
@@ -48,13 +71,31 @@
     });
   }
 
-  function logClick(zone, x, y) {
+  // --- Pozicija klika RELATIVNA na zonu (ispravka umjesto page_width/height) ---
+  // Zašto: cijela visina stranice (document.scrollHeight) mijenja se
+  // dinamički kako shop-flow.js otvara/zatvara popise i modale, pa isti
+  // klik "na istom mjestu na ekranu" dobiva RAZLIČITU poziciju ovisno kad je
+  // zabilježen. Rješenje: mjeri poziciju unutar granica SAME zone koja je
+  // kliknuta (npr. "15% od lijevog ruba te zone") - neovisno o promjeni
+  // visine stranice ili veličini ekrana.
+
+  function getZoneContainerRect(zone) {
+    // "cta" zona je gumb unutar dinamički stvorenog modala, nema stalni
+    // ".zone-cta" kontejner - koristi modal-box umjesto toga.
+    const selector = zone === 'cta' ? '.modal-box' : '.zone-' + zone;
+    const container = document.querySelector(selector);
+    return container ? container.getBoundingClientRect() : null;
+  }
+
+  function logClick(zone, pageX, pageY, zoneRelX, zoneRelY) {
     sendToBackend('/api/log-click', {
       session_id: sessionId,
       page_variant: pageVariant,
       zone: zone,
-      x: x,
-      y: y,
+      x: pageX,
+      y: pageY,
+      zone_rel_x: zoneRelX,
+      zone_rel_y: zoneRelY,
       timestamp_ms: Date.now(),
     });
   }
@@ -68,6 +109,7 @@
       page_variant: pageVariant,
       total_time_on_page: totalTime,
       task_success: success ? 1 : 0,
+      attempt_number: attemptNumber,
     });
     return totalTime;
   }
@@ -79,7 +121,18 @@
     if (!zoneEl) return;
 
     const zone = zoneEl.dataset.zone;
-    logClick(zone, e.clientX, e.clientY);
+
+    const containerRect = getZoneContainerRect(zone);
+    let zoneRelX = null;
+    let zoneRelY = null;
+    if (containerRect && containerRect.width > 0 && containerRect.height > 0) {
+      zoneRelX = (e.clientX - containerRect.left) / containerRect.width;
+      zoneRelY = (e.clientY - containerRect.top) / containerRect.height;
+      zoneRelX = Math.min(1, Math.max(0, zoneRelX));
+      zoneRelY = Math.min(1, Math.max(0, zoneRelY));
+    }
+
+    logClick(zone, e.pageX, e.pageY, zoneRelX, zoneRelY);
 
     if (zoneEl.dataset.taskTarget === 'true' && !taskCompleted) {
       const totalTime = finalizeSession(true);
@@ -110,8 +163,14 @@
   }
 
   // --- Mala dev traka (izvoz preko backend endpointa / nova sesija) ---
+  // Vidljiva SAMO tebi, kad na link dodaš ?dev=1 (npr. .../variant-a.html?dev=1).
+  // Stvarni testeri koji otvore obični link je NE vide - ne treba im smetati
+  // niti izgledati neprofesionalno na njihovom uređaju.
 
   window.addEventListener('DOMContentLoaded', function () {
+    const isDevMode = new URLSearchParams(window.location.search).get('dev') === '1';
+    if (!isDevMode) return;
+
     const bar = document.createElement('div');
     bar.className = 'hm-devbar';
     bar.innerHTML = `
