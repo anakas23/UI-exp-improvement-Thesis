@@ -1,0 +1,59 @@
+# ProductiveMind A/B test - sustav za prikupljanje podataka
+
+Sve spremno za Fazu 5 (prikupljanje podataka od testera).
+
+## Struktura
+
+```
+toka-ab-test/
+├── app.py              # Flask backend (baza, /assign, /track, /end_session)
+├── requirements.txt
+├── productivemind.db             # SQLite baza - kreira se automatski pri prvom pokretanju
+└── pages/
+    ├── intro.html       # neutralna uputna stranica (ulazna točka - "/")
+    ├── variant_a.html   # feature/tehnički fokus
+    └── variant_b.html   # benefit/emotivni fokus
+```
+
+## Pokretanje
+
+```bash
+pip install -r requirements.txt
+python app.py
+```
+
+Zatim otvori `http://localhost:5000` u browseru (desktop, ne mobitel/tablet).
+
+## Kako radi tok jedne sesije
+
+1. `GET /` → prikazuje `intro.html` (uputa, ista za sve)
+2. Klik na "Započni" → `POST /assign` → backend nasumično bira A/B, upisuje
+   red u `sessions`, vraća `redirect_url`
+3. Browser se preusmjeri na `variant_a.html?sid=...` ili `variant_b.html?sid=...`
+4. Dok gleda varijantu → pozicija miša se uzorkuje svakih ~200ms i šalje
+   u paketima svake 2s → `POST /track_batch` → upisuje više redova u
+   `events` (event_type = 'mousemove'). Klikovi se i dalje bilježe zasebno
+   preko `POST /track` (event_type = 'click').
+5. Klik na "Da, zanima me" / "Ne hvala" → `POST /end_session` → upisuje
+   `converted` (1/0) i `end_time` u `sessions`
+6. Ako korisnik ništa ne odluči 5 minuta → pozadinski safety-timeout worker
+   automatski zatvara sesiju (`converted = 0`, `ended_by = 'timeout'`)
+
+## Dijeljenje s testerima
+
+Ako testeri nisu na istoj mreži, potrebno je deployati server negdje dostupno
+(npr. na malom VPS-u, PythonAnywhere, Render...) ili koristiti alat poput
+`ngrok` za privremeni javni link prema lokalnom serveru.
+
+## Provjera prikupljenih podataka
+
+```bash
+sqlite3 productivemind.db "SELECT variant, converted, COUNT(*) FROM sessions GROUP BY variant, converted;"
+```
+
+## Sljedeći koraci (Faza 6-8)
+
+Kad se skupi dovoljno sesija, iz `productivemind.db` se generiraju:
+- heatmap (iz `events`, grupirano po `variant`)
+- A/B analiza konverzija (iz `sessions`)
+- feature tablica za ML (JOIN `sessions` + `events`, kako je ranije dogovoreno)

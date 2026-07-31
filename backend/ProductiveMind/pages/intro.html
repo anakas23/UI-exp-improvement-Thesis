@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Instructions</title>
+<style>
+  :root {
+    --bg: #F5F4F1;
+    --ink: #1D1D1B;
+    --muted: #6B6A66;
+    --accent: #3D5A50;
+    --card: #FFFFFF;
+    --border: #E2E0DA;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .card {
+    max-width: 560px;
+    width: 100%;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 48px 44px;
+  }
+  .eyebrow {
+    font-size: 13px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: 26px;
+    line-height: 1.3;
+    margin: 0 0 20px 0;
+  }
+  p {
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--muted);
+    margin: 0 0 16px 0;
+  }
+  .steps {
+    margin: 28px 0;
+    padding: 0;
+    list-style: none;
+  }
+  .steps li {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 14px;
+    font-size: 15px;
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  .steps .num {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  button {
+    margin-top: 12px;
+    width: 100%;
+    padding: 16px;
+    font-size: 16px;
+    font-weight: 600;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+  button:hover { opacity: 0.9; }
+  .fineprint {
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--muted);
+    text-align: center;
+  }
+  #mobile-block {
+    display: none;
+    max-width: 480px;
+    text-align: center;
+    padding: 40px;
+  }
+  @media (max-width: 1023px) {
+    .card { display: none; }
+    #mobile-block { display: block; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="card">
+    <div class="eyebrow">Short study &middot; ~1 minute</div>
+    <h1>Thanks for taking part</h1>
+    <p>On the next page you'll see the website of a product. Please look through it the way you naturally would — at your own pace, no rush.</p>
+    <ul class="steps">
+      <li><span class="num">1</span> Look at the page and the content on it.</li>
+      <li><span class="num">2</span> Once you've formed an impression, pick one of the two buttons at the bottom of the page.</li>
+      <li><span class="num">3</span> That's it — your part is done, no further steps.</li>
+    </ul>
+    <p style="font-size:14px;">There are no right or wrong answers — we're only interested in your honest, natural reaction.</p>
+    <button id="start-btn">Start</button>
+    <div class="fineprint">Data is collected anonymously for research purposes.</div>
+  </div>
+
+  <div id="mobile-block">
+    <h1>Desktop only</h1>
+    <p>This study is optimized for viewing on a computer. Please open this link on a laptop or desktop device.</p>
+  </div>
+
+<script>
+  const startBtn = document.getElementById('start-btn');
+
+  startBtn.addEventListener('click', () => {
+    startBtn.disabled = true;
+    startBtn.textContent = 'Loading...';
+
+    fetch('/assign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ viewport_width: window.innerWidth })
+    })
+      .then(res => res.json())
+      .then(data => {
+        window.location.href = data.redirect_url;
+      })
+      .catch(() => {
+        startBtn.disabled = false;
+        startBtn.textContent = 'Start';
+        alert('Connection error. Please try again.');
+      });
+  });
+</script>
+
+</body>
+</html>

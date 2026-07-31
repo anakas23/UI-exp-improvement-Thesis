@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProductiveMind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0E1620;
+    --panel: #16212E;
+    --panel-border: #263341;
+    --ink: #E7EDF3;
+    --muted: #8DA0B3;
+    --accent: #4FA3F7;
+    --accent-dim: #2A5A82;
+    --teal: #35D6C2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, sans-serif;
+    min-height: 100vh;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  #mobile-block { display: none; }
+  @media (max-width: 1023px) {
+    #app { display: none; }
+    #mobile-block {
+      display: flex;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px;
+      color: var(--ink);
+    }
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+
+  header {
+    padding: 28px 0 0 0;
+  }
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .brand {
+    font-size: 15px;
+    letter-spacing: 0.12em;
+    font-weight: 600;
+    color: var(--ink);
+  }
+  .brand .dot { color: var(--accent); }
+  .version {
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 0.05em;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: 1.05fr 0.95fr;
+    gap: 56px;
+    align-items: center;
+    padding: 64px 0 56px 0;
+  }
+  .eyebrow {
+    font-size: 12px;
+    color: var(--teal);
+    letter-spacing: 0.1em;
+    margin-bottom: 18px;
+  }
+  h1 {
+    font-size: 40px;
+    line-height: 1.18;
+    margin: 0 0 20px 0;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .lede {
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--muted);
+    margin: 0 0 28px 0;
+    max-width: 460px;
+  }
+  .spec-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .spec-list li {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    padding: 9px 0;
+    font-size: 14px;
+    border-bottom: 1px dashed var(--panel-border);
+  }
+  .spec-list li:last-child { border-bottom: none; }
+  .tag {
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(79,163,247,0.1);
+    padding: 3px 7px;
+    border-radius: 4px;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+  }
+
+  /* mock dashboard */
+  .device {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 24px 60px -30px rgba(0,0,0,0.6);
+  }
+  .device-bar {
+    display: flex;
+    gap: 6px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .device-bar span {
+    width: 9px; height: 9px; border-radius: 50%;
+    background: #33404E;
+  }
+  .device-body {
+    display: grid;
+    grid-template-columns: 84px 1fr;
+    min-height: 280px;
+  }
+  .device-nav {
+    border-right: 1px solid var(--panel-border);
+    padding: 16px 10px;
+  }
+  .nav-item {
+    width: 100%;
+    height: 8px;
+    border-radius: 3px;
+    background: #22303D;
+    margin-bottom: 12px;
+  }
+  .nav-item.active { background: var(--accent); }
+  .device-main { padding: 18px; }
+  .timer-ring {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    border: 6px solid #22303D;
+    border-top-color: var(--accent);
+    border-right-color: var(--accent);
+    margin: 0 auto 16px auto;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .grid-mini {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+  }
+  .grid-mini div {
+    height: 16px;
+    border-radius: 3px;
+    background: #1B2734;
+  }
+  .grid-mini div.on { background: var(--teal); opacity: 0.8; }
+
+  .divider { border-top: 1px solid var(--panel-border); margin: 0; }
+
+  .grid-features {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    padding: 48px 0 56px 0;
+  }
+  .feature {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    padding: 20px 18px;
+  }
+  .feature .label {
+    font-size: 11px;
+    color: var(--teal);
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+  .feature h3 {
+    font-size: 15px;
+    margin: 0 0 8px 0;
+    font-weight: 600;
+  }
+  .feature p {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  .cta-section {
+    text-align: center;
+    padding: 64px 0 80px 0;
+    border-top: 1px solid var(--panel-border);
+  }
+  .cta-section h2 {
+    font-size: 22px;
+    margin: 0 0 10px 0;
+  }
+  .cta-section .sub {
+    color: var(--muted);
+    font-size: 14px;
+    margin: 0 0 28px 0;
+  }
+  .cta-row {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+  }
+  .btn {
+    padding: 14px 28px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #071018;
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--muted);
+    border-color: var(--panel-border);
+  }
+
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; }
+    .grid-features { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="wrap">
+    <header>
+      <div class="topbar">
+        <div class="brand mono">PRODUCTIVEMIND<span class="dot">.</span>APP</div>
+        <div class="version mono">v1.0 &middot; build 214</div>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div>
+        <div class="eyebrow mono">STUDY ORGANIZATION SYSTEM</div>
+        <h1>Schedule, tasks, and focus &mdash; in one interface.</h1>
+        <p class="lede">ProductiveMind connects your calendar, course tasks, and a focus timer into one clear system, without manually juggling multiple tools.</p>
+        <ul class="spec-list mono">
+          <li><span class="tag">SYNC</span> Automatic sync with Google/Outlook calendar</li>
+          <li><span class="tag">TIMER</span> Pomodoro timer with focus session tracking</li>
+          <li><span class="tag">TASKS</span> Tasks grouped by course and due date</li>
+          <li><span class="tag">STATS</span> Weekly overview of time spent</li>
+        </ul>
+      </div>
+      <div class="device">
+        <div class="device-bar"><span></span><span></span><span></span></div>
+        <div class="device-body">
+          <div class="device-nav">
+            <div class="nav-item active"></div>
+            <div class="nav-item"></div>
+            <div class="nav-item"></div>
+            <div class="nav-item"></div>
+          </div>
+          <div class="device-main">
+            <div class="timer-ring mono">24:10</div>
+            <div class="grid-mini">
+              <div class="on"></div><div class="on"></div><div></div><div class="on"></div>
+              <div></div><div class="on"></div><div class="on"></div>
+              <div></div><div class="on"></div><div></div><div class="on"></div>
+              <div class="on"></div><div></div><div class="on"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="divider"></div>
+
+  <div class="wrap">
+    <div class="grid-features">
+      <div class="feature">
+        <div class="label mono">[ ORGANIZATION ]</div>
+        <h3>Calendar by course</h3>
+        <p>All deadlines and tasks automatically sorted by subject.</p>
+      </div>
+      <div class="feature">
+        <div class="label mono">[ FOCUS ]</div>
+        <h3>Pomodoro timer</h3>
+        <p>25/5 work sessions with automatic duration logging.</p>
+      </div>
+      <div class="feature">
+        <div class="label mono">[ NOTES ]</div>
+        <h3>Quick notes</h3>
+        <p>Linked directly to the task or lecture they relate to.</p>
+      </div>
+      <div class="feature">
+        <div class="label mono">[ ANALYTICS ]</div>
+        <h3>Weekly report</h3>
+        <p>An overview of how much time was actually spent per course.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="cta-section">
+    <div class="wrap">
+      <h2>Interested in access to this app?</h2>
+      <p class="sub">Currently welcoming our first interested users. The app would be free to use.</p>
+      <div class="cta-row">
+        <button class="btn btn-primary" id="btn-yes">Yes, I'm interested</button>
+        <button class="btn btn-secondary" id="btn-no">No thanks</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="mobile-block">
+  <div>
+    <h1 class="mono" style="font-size:20px;">Desktop only</h1>
+    <p style="color:var(--muted); max-width:360px;">Please open this page on a laptop or desktop device.</p>
+  </div>
+</div>
+
+<script>
+  const sessionId = new URLSearchParams(window.location.search).get('sid');
+
+  function sendTrack(payload) {
+    if (!sessionId) return;
+    fetch('/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, timestamp: Date.now(), ...payload })
+    });
+  }
+
+  // praćenje pozicije miša (proxy za pažnju) - uzorkovano i slano u paketima
+  let lastX = null, lastY = null;
+  let mouseBuffer = [];
+
+  document.addEventListener('mousemove', (e) => {
+    lastX = e.clientX / window.innerWidth;
+    lastY = e.pageY / document.documentElement.scrollHeight;
+  });
+
+  // svakih 200ms zabilježi trenutnu poziciju (ako se miš pomicao)
+  setInterval(() => {
+    if (lastX === null) return;
+    mouseBuffer.push({ x_percent: lastX, y_percent: lastY, timestamp: Date.now() });
+  }, 200);
+
+  // svakih 2s pošalji nakupljene uzorke odjednom
+  function flushMouseBuffer() {
+    if (!sessionId || mouseBuffer.length === 0) return;
+    const batch = mouseBuffer;
+    mouseBuffer = [];
+    fetch('/track_batch', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, events: batch })
+    });
+  }
+  setInterval(flushMouseBuffer, 2000);
+
+  // svaki klik na stranici (uključujući CTA gumbe) - i dalje bilježimo
+  document.addEventListener('click', (e) => {
+    sendTrack({
+      event_type: 'click',
+      x_percent: e.clientX / window.innerWidth,
+      y_percent: e.pageY / document.documentElement.scrollHeight
+    });
+  });
+
+  // dubina scrolla - šalje samo kad se poveća max dubina
+  let maxScroll = 0;
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const scrolled = (window.scrollY + window.innerHeight) / document.documentElement.scrollHeight;
+      if (scrolled > maxScroll) {
+        maxScroll = Math.min(scrolled, 1);
+        sendTrack({ event_type: 'scroll', scroll_percent: maxScroll });
+      }
+      ticking = false;
+    });
+  });
+
+  function endSession(converted) {
+    flushMouseBuffer();
+    fetch('/end_session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, converted, ended_by: 'click' })
+    }).then(() => {
+      document.getElementById('app').innerHTML =
+        '<div style="max-width:480px;margin:140px auto;text-align:center;font-family:sans-serif;">' +
+        '<h2 style="color:var(--ink);">Thanks for participating!</h2>' +
+        '<p style="color:var(--muted);">Your response has been recorded.</p></div>';
+    });
+  }
+
+  document.getElementById('btn-yes').addEventListener('click', () => endSession(true));
+  document.getElementById('btn-no').addEventListener('click', () => endSession(false));
+</script>
+
+</body>
+</html>
