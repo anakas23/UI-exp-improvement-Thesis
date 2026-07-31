@@ -200,8 +200,13 @@ def safety_timeout_worker():
         conn.close()
 
 
+# Ovo se izvrši i kad se app.py pokrene direktno (python app.py) i kad ga
+# produkcijski server (npr. PythonAnywhere) samo importira - inače se baza
+# nikad ne bi kreirala i safety timeout nikad ne bi krenuo u produkciji.
+init_db()
+timeout_thread = threading.Thread(target=safety_timeout_worker, daemon=True)
+timeout_thread.start()
+
+
 if __name__ == "__main__":
-    init_db()
-    timeout_thread = threading.Thread(target=safety_timeout_worker, daemon=True)
-    timeout_thread.start()
     app.run(debug=True, port=5000)
