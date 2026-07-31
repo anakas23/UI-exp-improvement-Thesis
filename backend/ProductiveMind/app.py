@@ -9,6 +9,7 @@ Zatim otvori http://localhost:5000 u browseru.
 Svaki novi posjet na "/" nasumično dodjeljuje varijantu A ili B.
 """
 
+import os
 import random
 import sqlite3
 import threading
@@ -17,7 +18,12 @@ import uuid
 
 from flask import Flask, jsonify, request, send_from_directory
 
-DB_PATH = "productivemind.db"
+# Apsolutna putanja izračunata iz lokacije ove datoteke - baza se time uvijek
+# otvara/kreira na istom mjestu bez obzira odakle proces stvarno pokrenut
+# (npr. WSGI server može imati drugačiji working directory od onog koji
+# očekuješ, pa relativna putanja zna kreirati bazu na neočekivanom mjestu).
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DB_PATH = os.path.join(BASE_DIR, "productivemind.db")
 SAFETY_TIMEOUT_SECONDS = 5 * 60  # sigurnosni timeout - ne utječe na normalne podatke
 CHECK_INTERVAL_SECONDS = 30
 
