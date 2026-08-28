@@ -1,0 +1,19 @@
+variant_a.html — feature/tehnički fokus: tamna tema, monospace spec-sheet stil s bracket labelama ([ ORGANIZACIJA ]), mock dashboard prikaz aplikacije, popis funkcionalnosti
+
+variant_b.html — benefit/emotivni fokus: topla minimalistička tema, serif naslov, tri testimonijala studenata, mekši vizualni jezik
+
+
+
+Napomena o skripti: heatmap kombinira i mousemove i click točke u istu density mapu (jer oboje predstavlja "gdje je pažnja bila"), a klikovi se dodatno ističu bijelim točkicama preko toga — tako vidiš i opću zonu pažnje i točne klikove u istom prikazu. Ako ima manje od 20 točaka za neku varijantu, skripta ispiše upozorenje umjesto da nacrta besmislenu heatmapu.
+
+
+provjeri jel funkcionira desktop only provjera. provjera podataka jel se ok  spremaju(baza) . reci mi koji podatci bi bil i ulazni parametri za ml, a da imaju smisla s obzirom na najnoviju verziju. provjeri jel imamo sve podatke koje bismo koristili za ab testing i trebamo li mozda jos nesto prikupljati. prije nego sto posaljem testerima. 
+
+
+
+
+Pozdrav, možete li molim vas poklikat tj pogledat jednu stranicu za moj završni, trajat će možda 30 sekundi do 1 min ukupno. Morate bit na kompjuteru, ne na mobitelu. 
+
+
+
+Moram prikupit podatke o klilkovima i položaju miša ovisno o dizajnu stranice.  

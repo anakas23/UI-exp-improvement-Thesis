@@ -85,7 +85,10 @@ def intro():
 def assign():
     data = request.get_json(silent=True) or {}
     session_id = str(uuid.uuid4())
-    variant = random.choice(["A", "B"])
+    # Privremeno isključena nasumična dodjela - varijanta B ima manje
+    # sesija, pa svi novi testeri idu na B dok se brojevi ne izjednače.
+    # Za povratak na nasumičnu dodjelu, vrati: variant = random.choice(["A", "B"])
+    variant = "B"
     viewport_width = data.get("viewport_width")
     now_ms = int(time.time() * 1000)
 

@@ -1,0 +1,6 @@
+
+ok sad review-aj moj plan:
+napravi 2 varijante stranice, obje jako razlicite jedna od druge kako bi rezultati bili relevantni. kad napravim 2 varijante dat cu je ispitanicima i svakog ce se random prikazati ili jedna ili druga varijanta stranice. stranica bi bila one page(zbog heatmape), Productivity app + gumb "zainteresiran" vs. gumb "izađi", uz backend safety timeout(npr 5 min). 
+prikupljeni podatci moraju biti dovoljni da se napvavi A/B testing, heatmapa klikova(ona mora biti precizna i točno mora prikazivati gdje su tocno korisnici klikali na ekranu, zato se mora paziti da se ocite koja je velicina ekrana na kojem korisnik klika- ogranicit cu da se oze samo na laptopu izvrsavat), i podatci za ML. 
+
+ML bi bio jedaan neuron cije bismo tezine ustimali linearnim transformacijama - odgovor na neko  pitanje mozda - klasifikacija , ili eventualno nekako drugo implementirati ml
