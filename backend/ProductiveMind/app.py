@@ -7,6 +7,22 @@ Pokretanje:
 
 Zatim otvori http://localhost:5000 u browseru.
 Svaki novi posjet na "/" nasumično dodjeljuje varijantu A ili B.
+
+ISPRAVLJENA VERZIJA - promjene u odnosu na prvu verziju:
+  1. Vraćena nasumična dodjela varijante (bila je privremeno fiksirana na "B").
+  2. Endpointi /track i /track_batch odbijaju događaje za sesiju koja je već
+     završena. Time se na razini poslužitelja onemogućuje bilježenje ponašanja
+     nakon donesene odluke, neovisno o tome radi li klijentska skripta ispravno
+     (npr. ako ispitanik ima otvorenu istu poveznicu u dvije kartice).
+  3. Uz svaki događaj bilježi se i vrijeme primitka na poslužitelju
+     (stupac server_time), pa analiza više ne ovisi o satu ispitanikova
+     računala, koji zna odstupati i po nekoliko minuta.
+  4. Sigurnosni timeout mjeri se od zadnje aktivnosti (stupac last_seen), a ne
+     od početka sesije. U prvoj verziji sesija se zatvarala 5 minuta nakon
+     otvaranja stranice, pa je ispitanik koji je stranicu pažljivo čitao dulje
+     od pet minuta bio automatski proglašen nekonvertiranim.
+  5. Sesija zatvorena timeoutom ili napuštanjem stranice ostavlja converted
+     kao NULL (izostanak odluke), umjesto da se upisuje 0 (odluka "ne").
 """
 
 import os
@@ -18,13 +34,12 @@ import uuid
 
 from flask import Flask, jsonify, request, send_from_directory
 
-# Apsolutna putanja izračunata iz lokacije ove datoteke - baza se time uvijek
-# otvara/kreira na istom mjestu bez obzira odakle proces stvarno pokrenut
-# (npr. WSGI server može imati drugačiji working directory od onog koji
-# očekuješ, pa relativna putanja zna kreirati bazu na neočekivanom mjestu).
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "productivemind.db")
-SAFETY_TIMEOUT_SECONDS = 5 * 60  # sigurnosni timeout - ne utječe na normalne podatke
+
+# Sigurnosni timeout se sada mjeri od ZADNJE AKTIVNOSTI, pa je granica
+# podignuta - ispitanik koji stranicu čita 10 minuta više se ne odbacuje.
+SAFETY_TIMEOUT_SECONDS = 15 * 60
 CHECK_INTERVAL_SECONDS = 30
 
 app = Flask(__name__, static_folder="pages", static_url_path="")
@@ -47,7 +62,8 @@ def init_db():
             start_time INTEGER NOT NULL,
             end_time INTEGER,
             converted INTEGER,
-            ended_by TEXT
+            ended_by TEXT,
+            last_seen INTEGER
         );
 
         CREATE TABLE IF NOT EXISTS events (
@@ -58,14 +74,34 @@ def init_db():
             y_percent REAL,
             scroll_percent REAL,
             timestamp INTEGER NOT NULL,
+            server_time INTEGER,
             FOREIGN KEY (session_id) REFERENCES sessions(session_id)
         );
 
         CREATE INDEX IF NOT EXISTS idx_events_session ON events(session_id);
         """
     )
+
+    # Nadogradnja postojeće baze koja je nastala starijom verzijom sheme -
+    # bez ovoga bi se na već prikupljenim podacima server srušio pri prvom upisu.
+    existing_sessions = [r[1] for r in conn.execute("PRAGMA table_info(sessions)")]
+    if "last_seen" not in existing_sessions:
+        conn.execute("ALTER TABLE sessions ADD COLUMN last_seen INTEGER")
+        conn.execute("UPDATE sessions SET last_seen = start_time WHERE last_seen IS NULL")
+    existing_events = [r[1] for r in conn.execute("PRAGMA table_info(events)")]
+    if "server_time" not in existing_events:
+        conn.execute("ALTER TABLE events ADD COLUMN server_time INTEGER")
+
     conn.commit()
     conn.close()
+
+
+def session_is_open(conn, session_id):
+    """Sesija prima nove događaje samo dok nije završena."""
+    row = conn.execute(
+        "SELECT end_time FROM sessions WHERE session_id = ?", (session_id,)
+    ).fetchone()
+    return row is not None and row["end_time"] is None
 
 
 # ---------- stranice ----------
@@ -75,28 +111,21 @@ def intro():
     return send_from_directory("pages", "intro.html")
 
 
-# variant_a.html i variant_b.html poslužuju se automatski preko static_folder,
-# pošto su fizički u pages/ folderu (nema potrebe za posebnom rutom).
-
-
 # ---------- API ----------
 
 @app.route("/assign", methods=["POST"])
 def assign():
     data = request.get_json(silent=True) or {}
     session_id = str(uuid.uuid4())
-    # Privremeno isključena nasumična dodjela - varijanta B ima manje
-    # sesija, pa svi novi testeri idu na B dok se brojevi ne izjednače.
-    # Za povratak na nasumičnu dodjelu, vrati: variant = random.choice(["A", "B"])
-    variant = "B"
+    variant = random.choice(["A", "B"])
     viewport_width = data.get("viewport_width")
     now_ms = int(time.time() * 1000)
 
     conn = get_db()
     conn.execute(
-        "INSERT INTO sessions (session_id, variant, viewport_width, start_time) "
-        "VALUES (?, ?, ?, ?)",
-        (session_id, variant, viewport_width, now_ms),
+        "INSERT INTO sessions (session_id, variant, viewport_width, start_time, last_seen) "
+        "VALUES (?, ?, ?, ?, ?)",
+        (session_id, variant, viewport_width, now_ms, now_ms),
     )
     conn.commit()
     conn.close()
@@ -118,10 +147,17 @@ def track():
     if not all(k in data for k in required):
         return jsonify({"ok": False, "error": "missing fields"}), 400
 
+    now_ms = int(time.time() * 1000)
     conn = get_db()
+    if not session_is_open(conn, data["session_id"]):
+        conn.close()
+        # Sesija je već završena - događaj se odbacuje. Vraća se 409 kako bi se
+        # u razvoju odmah vidjelo da klijent i dalje šalje podatke.
+        return jsonify({"ok": False, "error": "session closed"}), 409
+
     conn.execute(
         "INSERT INTO events (session_id, event_type, x_percent, y_percent, "
-        "scroll_percent, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+        "scroll_percent, timestamp, server_time) VALUES (?, ?, ?, ?, ?, ?, ?)",
         (
             data["session_id"],
             data["event_type"],
@@ -129,7 +165,12 @@ def track():
             data.get("y_percent"),
             data.get("scroll_percent"),
             data["timestamp"],
+            now_ms,
         ),
+    )
+    conn.execute(
+        "UPDATE sessions SET last_seen = ? WHERE session_id = ?",
+        (now_ms, data["session_id"]),
     )
     conn.commit()
     conn.close()
@@ -149,14 +190,24 @@ def track_batch():
     if not session_id or not events:
         return jsonify({"ok": False, "error": "missing fields"}), 400
 
+    now_ms = int(time.time() * 1000)
     conn = get_db()
+    if not session_is_open(conn, session_id):
+        conn.close()
+        return jsonify({"ok": False, "error": "session closed"}), 409
+
     conn.executemany(
         "INSERT INTO events (session_id, event_type, x_percent, y_percent, "
-        "scroll_percent, timestamp) VALUES (?, 'mousemove', ?, ?, NULL, ?)",
+        "scroll_percent, timestamp, server_time) "
+        "VALUES (?, 'mousemove', ?, ?, NULL, ?, ?)",
         [
-            (session_id, e.get("x_percent"), e.get("y_percent"), e.get("timestamp"))
+            (session_id, e.get("x_percent"), e.get("y_percent"),
+             e.get("timestamp"), now_ms)
             for e in events
         ],
+    )
+    conn.execute(
+        "UPDATE sessions SET last_seen = ? WHERE session_id = ?", (now_ms, session_id)
     )
     conn.commit()
     conn.close()
@@ -165,19 +216,32 @@ def track_batch():
 
 @app.route("/end_session", methods=["POST"])
 def end_session():
+    """
+    Zatvara sesiju. ended_by = 'click' znači da je ispitanik sam donio odluku
+    (jedino takve sesije ulaze u analizu); 'abandon' znači da je zatvorio ili
+    napustio karticu bez odluke, pa converted ostaje NULL.
+    """
     data = request.get_json(silent=True) or {}
-    if "session_id" not in data or "converted" not in data:
+    if "session_id" not in data:
         return jsonify({"ok": False, "error": "missing fields"}), 400
+
+    ended_by = data.get("ended_by", "click")
+    converted = data.get("converted")
+    if ended_by == "click" and converted is None:
+        return jsonify({"ok": False, "error": "missing converted"}), 400
 
     now_ms = int(time.time() * 1000)
     conn = get_db()
+    # Uvjet end_time IS NULL osigurava da se prva odluka ne može naknadno
+    # prepisati (npr. beaconom poslanim pri zatvaranju kartice).
     conn.execute(
-        "UPDATE sessions SET converted = ?, end_time = ?, ended_by = ? "
-        "WHERE session_id = ? AND converted IS NULL",
+        "UPDATE sessions SET converted = ?, end_time = ?, ended_by = ?, last_seen = ? "
+        "WHERE session_id = ? AND end_time IS NULL",
         (
-            1 if data["converted"] else 0,
+            None if converted is None else (1 if converted else 0),
             now_ms,
-            data.get("ended_by", "click"),
+            ended_by,
+            now_ms,
             data["session_id"],
         ),
     )
@@ -190,32 +254,33 @@ def end_session():
 
 def safety_timeout_worker():
     """
-    Tiho u pozadini zatvara sesije koje su ostale otvorene predugo
-    (npr. korisnik ostavio tab otvoren bez klika na gumb).
-    Ne utječe na normalno ponašanje - aktivira se tek nakon
-    SAFETY_TIMEOUT_SECONDS neaktivnosti.
+    Zatvara sesije u kojima nije bilo nikakve aktivnosti dulje od
+    SAFETY_TIMEOUT_SECONDS (npr. ispitanik je ostavio karticu otvorenu i otišao).
+    Mjeri se vrijeme od ZADNJE AKTIVNOSTI, a ne od početka sesije, pa dugo
+    čitanje stranice ne prekida mjerenje.
+
+    converted ostaje NULL jer izostanak odluke nije odluka "ne".
     """
     while True:
         time.sleep(CHECK_INTERVAL_SECONDS)
-        cutoff_ms = int(time.time() * 1000) - SAFETY_TIMEOUT_SECONDS * 1000
         now_ms = int(time.time() * 1000)
+        cutoff_ms = now_ms - SAFETY_TIMEOUT_SECONDS * 1000
         conn = get_db()
         conn.execute(
-            "UPDATE sessions SET converted = 0, end_time = ?, ended_by = 'timeout' "
-            "WHERE converted IS NULL AND start_time < ?",
+            "UPDATE sessions SET end_time = ?, ended_by = 'timeout' "
+            "WHERE end_time IS NULL AND COALESCE(last_seen, start_time) < ?",
             (now_ms, cutoff_ms),
         )
         conn.commit()
         conn.close()
 
 
-# Ovo se izvrši i kad se app.py pokrene direktno (python app.py) i kad ga
-# produkcijski server (npr. PythonAnywhere) samo importira - inače se baza
-# nikad ne bi kreirala i safety timeout nikad ne bi krenuo u produkciji.
 init_db()
 timeout_thread = threading.Thread(target=safety_timeout_worker, daemon=True)
 timeout_thread.start()
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    # use_reloader=False - inače Flask pokreće proces dvaput, pa i pozadinska
+    # dretva sigurnosnog timeouta radi u dvije instance.
+    app.run(debug=True, port=5000, use_reloader=False)

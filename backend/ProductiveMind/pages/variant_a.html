@@ -345,10 +345,27 @@
 </div>
 
 <script>
+  const THANK_YOU_HTML =
+    '<div style="max-width:480px;margin:140px auto;text-align:center;font-family:sans-serif;">' +
+    '<h2 style="color:var(--ink);">Thanks for participating!</h2>' +
+    '<p style="color:var(--muted);">Your response has been recorded.</p></div>';
+
   const sessionId = new URLSearchParams(window.location.search).get('sid');
 
+  // Mjerenje se uopće ne pokreće na uskim ekranima, jer je na njima prikazana
+  // samo poruka "Desktop only" - inače bi nastajale sesije bez sadržaja koje
+  // nikad ne mogu završiti odlukom.
+  const trackingEnabled = !!sessionId && window.innerWidth >= 1024;
+
+  // Zastavica i identifikatori intervala. Bez ovoga mjerenje nastavlja raditi
+  // i nakon što ispitanik klikne gumb, pa se pozicije miša bilježe dok god je
+  // kartica otvorena na poruci zahvale.
+  let tracking = trackingEnabled;
+  let sampleTimer = null;
+  let flushTimer = null;
+
   function sendTrack(payload) {
-    if (!sessionId) return;
+    if (!tracking) return;
     fetch('/track', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -356,24 +373,52 @@
     });
   }
 
+  function clamp01(v) {
+    return Math.min(Math.max(v, 0), 1);
+  }
+
   // praćenje pozicije miša (proxy za pažnju) - uzorkovano i slano u paketima
-  let lastX = null, lastY = null;
+  // Pamti se pozicija u koordinatama prozora (clientX/clientY), a pozicija
+  // unutar dokumenta računa se tek u trenutku uzorkovanja. Ako se stranica
+  // pomakne scrollom dok miš stoji, pozicija pokazivača na stranici se mijenja
+  // i bez pomicanja miša - ranija verzija bi u tom slučaju uzastopno bilježila
+  // zastarjelu koordinatu.
+  let lastClientX = null, lastClientY = null;
   let mouseBuffer = [];
 
-  document.addEventListener('mousemove', (e) => {
-    lastX = e.clientX / window.innerWidth;
-    lastY = e.pageY / document.documentElement.scrollHeight;
-  });
+  function onMouseMove(e) {
+    lastClientX = e.clientX;
+    lastClientY = e.clientY;
+  }
 
-  // svakih 200ms zabilježi trenutnu poziciju (ako se miš pomicao)
-  setInterval(() => {
-    if (lastX === null) return;
-    mouseBuffer.push({ x_percent: lastX, y_percent: lastY, timestamp: Date.now() });
-  }, 200);
+  function onClick(e) {
+    sendTrack({
+      event_type: 'click',
+      x_percent: clamp01(e.clientX / window.innerWidth),
+      y_percent: clamp01(e.pageY / document.documentElement.scrollHeight)
+    });
+  }
 
-  // svakih 2s pošalji nakupljene uzorke odjednom
+  // dubina scrolla - šalje se samo kad se maksimalna dubina poveća za barem
+  // 2 postotna boda, da se izbjegnu stotine gotovo identičnih zahtjeva
+  let maxScroll = 0;
+  let ticking = false;
+
+  function onScroll() {
+    if (ticking || !tracking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      const scrolled = (window.scrollY + window.innerHeight) / document.documentElement.scrollHeight;
+      if (scrolled > maxScroll + 0.02 || (scrolled > maxScroll && scrolled >= 0.999)) {
+        maxScroll = clamp01(scrolled);
+        sendTrack({ event_type: 'scroll', scroll_percent: maxScroll });
+      }
+      ticking = false;
+    });
+  }
+
   function flushMouseBuffer() {
-    if (!sessionId || mouseBuffer.length === 0) return;
+    if (!tracking || mouseBuffer.length === 0) return;
     const batch = mouseBuffer;
     mouseBuffer = [];
     fetch('/track_batch', {
@@ -382,49 +427,75 @@
       body: JSON.stringify({ session_id: sessionId, events: batch })
     });
   }
-  setInterval(flushMouseBuffer, 2000);
 
-  // svaki klik na stranici (uključujući CTA gumbe) - i dalje bilježimo
-  document.addEventListener('click', (e) => {
-    sendTrack({
-      event_type: 'click',
-      x_percent: e.clientX / window.innerWidth,
-      y_percent: e.pageY / document.documentElement.scrollHeight
-    });
-  });
+  function startTracking() {
+    if (!trackingEnabled) return;
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('click', onClick);
+    window.addEventListener('scroll', onScroll);
 
-  // dubina scrolla - šalje samo kad se poveća max dubina
-  let maxScroll = 0;
-  let ticking = false;
-  window.addEventListener('scroll', () => {
-    if (ticking) return;
-    ticking = true;
-    requestAnimationFrame(() => {
-      const scrolled = (window.scrollY + window.innerHeight) / document.documentElement.scrollHeight;
-      if (scrolled > maxScroll) {
-        maxScroll = Math.min(scrolled, 1);
-        sendTrack({ event_type: 'scroll', scroll_percent: maxScroll });
-      }
-      ticking = false;
-    });
-  });
+    // svakih 200 ms zabilježi trenutnu poziciju
+    sampleTimer = setInterval(() => {
+      if (!tracking || lastClientX === null) return;
+      // Kad je kartica u pozadini, preglednik i dalje okida interval, ali
+      // ispitanik stranicu ne gleda - takvi uzorci nisu pokazatelj pažnje.
+      if (document.hidden) return;
+      mouseBuffer.push({
+        x_percent: clamp01(lastClientX / window.innerWidth),
+        y_percent: clamp01((lastClientY + window.scrollY) / document.documentElement.scrollHeight),
+        timestamp: Date.now()
+      });
+    }, 200);
+
+    // svake 2 s pošalji nakupljene uzorke odjednom
+    flushTimer = setInterval(flushMouseBuffer, 2000);
+  }
+
+  function stopTracking() {
+    // Ovo je ključni ispravak: mjerenje se mora zaustaviti u trenutku odluke,
+    // jer sve zabilježeno poslije nastaje NAKON ishoda koji se mjeri.
+    if (!tracking) return;
+    flushMouseBuffer();
+    tracking = false;
+    clearInterval(sampleTimer);
+    clearInterval(flushTimer);
+    sampleTimer = null;
+    flushTimer = null;
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('click', onClick);
+    window.removeEventListener('scroll', onScroll);
+  }
 
   function endSession(converted) {
-    flushMouseBuffer();
+    const wasTracking = tracking;
+    stopTracking();
+    if (!wasTracking) return;
     fetch('/end_session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_id: sessionId, converted, ended_by: 'click' })
     }).then(() => {
-      document.getElementById('app').innerHTML =
-        '<div style="max-width:480px;margin:140px auto;text-align:center;font-family:sans-serif;">' +
-        '<h2 style="color:var(--ink);">Thanks for participating!</h2>' +
-        '<p style="color:var(--muted);">Your response has been recorded.</p></div>';
+      document.getElementById('app').innerHTML = THANK_YOU_HTML;
     });
   }
 
+  // Ako ispitanik zatvori karticu bez odluke, sesija se odmah označava kao
+  // napuštena. Bez ovoga bi čekala sigurnosni timeout i bila neraspoznatljiva
+  // od sesije u kojoj je ispitanik samo ostavio karticu otvorenu.
+  window.addEventListener('pagehide', () => {
+    if (!tracking) return;
+    stopTracking();
+    const body = JSON.stringify({ session_id: sessionId, ended_by: 'abandon', converted: null });
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon('/end_session', new Blob([body], { type: 'application/json' }));
+    }
+  });
+
+  startTracking();
+
   document.getElementById('btn-yes').addEventListener('click', () => endSession(true));
   document.getElementById('btn-no').addEventListener('click', () => endSession(false));
+
 </script>
 
 </body>
